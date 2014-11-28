@@ -107,12 +107,12 @@ class WeakLensingLikelihood(object):
     @property
     def dtype(self):
         return np.dtype([('log_m200', np.float),
-                         ('c', np.float)])
+                         ('log_c', np.float)])
 
     def to_params(self, p):
         """Returns a view of the array ``p`` with named columns corresponding
         to the parameters of the lens model: ``log_m200`` and
-        ``log_cm1`` (both natural logs).
+        ``log_c`` (both natural logs).
 
         """
         return np.atleast_1d(p).view(self.dtype).squeeze()
@@ -126,10 +126,7 @@ class WeakLensingLikelihood(object):
         p = self.to_params(p)
 
         m200 = np.exp(p['log_m200'])
-        c = p['c']
-
-        if c < self.clow or c > self.chigh:
-            return np.NINF
+        c = np.exp(p['log_c'])
 
         shear_true = NFW(self.rs, m200, c, self.zl, self.zs)
 
