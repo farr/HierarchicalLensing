@@ -3,6 +3,20 @@ import numpy as np
 import plotutils.parameterizations as par
 import scipy.stats as ss
 
+def convert_to_lognormal(x, dx):
+    r"""Returns the log-normal parameters, :math:`\mu` and :math:`\sigma`,
+    that correspond to a log-normal distribution with a peak at
+    :math:`x` and a standard deviation of :math:`dx`.
+
+    """
+
+    mu = np.log(x)
+
+    exp_s2 = 0.5*(1.0 + np.sqrt(1.0 + 4.0*dx*dx/x/x))
+    sigma = np.sqrt(np.log(exp_s2))
+
+    return mu, sigma
+
 def NFW(r, M200, c200, zl, zs):
     #this code calculates the shear at a given distance r from an object at redshift zl of mass M200 and concentration c200 assuming a background distribution of zs
     
@@ -52,11 +66,17 @@ def NFW(r, M200, c200, zl, zs):
     return reducedshear
 
 class WeakLensingLikelihood(object):
-    """Likelihood function for weak lensing measurements of shear.  Our
-    model is that the measured shear is normally distributed about the
-    true shear with standard deviation equal to the measured
-    uncertainty.  This is, of course, crap, since it predicts some
-    negative data, but can be extended later.
+    r"""Likelihood function for weak lensing measurements of shear.  Our
+    model is that the measured shear is log-normally distributed about
+    the true value, with a standard deviation that is given by the
+    observational uncertainty:
+
+    ..math::
+
+      \ln \kappa \sim N\left[ \ln \kappa_\mathrm{true} , \sigma \right],
+
+    where :math:`\sigma` is chosen so that the standard deviation of
+    the log-normal matches the observational uncertainty.
 
     """
     
@@ -117,22 +137,57 @@ class WeakLensingLikelihood(object):
         """
         return np.atleast_1d(p).view(self.dtype).squeeze()
 
+    def _m200(self, p):
+        p = self.to_params(p)
+
+        return np.exp(p['log_m200'])
+
+    def _c(self, p):
+        p = self.to_params(p)
+
+        return np.exp(p['log_c'])
+
+    def _m200_c(self, p):
+        p = self.to_params(p)
+
+        return np.exp(p['log_m200']), np.exp(p['log_c'])
+    
     def log_likelihood(self, p):
         """Returns the log of the likelihood of the stored data, assuming that
-        each measurement at a given radius is independent 
+        each measurement at a given radius is independent, and the
+        measured value is log-normally distributed about the true
+        value, with a standard deviation equal to the quoted
+        measurement uncertainty.
 
         """
 
-        p = self.to_params(p)
+        shear_true = self.shear(p)
 
-        m200 = np.exp(p['log_m200'])
-        c = np.exp(p['log_c'])
-
-        shear_true = NFW(self.rs, m200, c, self.zl, self.zs)
-
-        return np.sum(ss.norm.logpdf(self.shears, loc=shear_true, scale=self.shear_uncert))
+        mus, sigmas = convert_to_lognormal(shear_true, self.shear_uncert)
+        
+        return np.sum(ss.lognorm.logpdf(self.shears, sigmas, scale=np.exp(mus)))
 
     def __call__(self, p):
         """Synonym for ``log_likelihood``."""
 
         return self.log_likelihood(p)
+
+    def draw_data(self, p):
+        r"""Return synthetic observational data from this model with parameters
+        ``p``.
+
+        """
+
+        shear_true = self.shear(p)
+
+        mus, sigmas = convert_to_lognormal(shear_true, self.shear_uncert)
+
+        return np.random.lognormal(mean=mus, sigma=sigmas)
+
+    def shear(self, p):
+        r"""Returns the model prediction for shear at parameters ``p``.
+
+        """
+
+        m200, c = self._m200_c(p)
+        return NFW(self.rs, m200, c, self.zl, self.zs)
