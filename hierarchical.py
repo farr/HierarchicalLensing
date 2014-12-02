@@ -64,54 +64,54 @@ class HierarchicalWLPosterior(object):
                                 zip(self.rs, self.kappas, self.sigma_kappas, \
                                     self.zl, self.zs)]
 
-        @property
-        def rs(self):
-            return self._rs
-        @property
-        def kappas(self):
-            return self._kappas
-        @property
-        def sigma_kappas(self):
-            return self._sigma_kappas
-        @property
-        def zl(self):
-            return self._zl
-        @property
-        def zs(self):
-            return self._zs
-        @property
-        def wl_likelihoods(self):
-            return self._wl_likelihoods
-        @property
-        def nlens(self):
-            return len(self.rs)
-        @property
-        def dtype(self):
-            return np.dtype([('mu', np.float, 2),
-                             ('sigma_params', np.float, 3),
-                             ('lens_params', np.float, (self.nlens, 2))])
-        @property
-        def nparams(self):
-            return 5 + 2*self.nlens
+    @property
+    def rs(self):
+        return self._rs
+    @property
+    def kappas(self):
+        return self._kappas
+    @property
+    def sigma_kappas(self):
+        return self._sigma_kappas
+    @property
+    def zl(self):
+        return self._zl
+    @property
+    def zs(self):
+        return self._zs
+    @property
+    def wl_likelihoods(self):
+        return self._wl_likelihoods
+    @property
+    def nlens(self):
+        return len(self.rs)
+    @property
+    def dtype(self):
+        return np.dtype([('mu', np.float, 2),
+                         ('sigma_params', np.float, 3),
+                         ('lens_params', np.float, (self.nlens, 2))])
+    @property
+    def nparams(self):
+        return 5 + 2*self.nlens
 
-        def to_params(self, p):
-            return np.atleast_1d(p).view(self.dtype).squeeze()
+    def to_params(self, p):
+        return np.atleast_1d(p).view(self.dtype).squeeze()
 
-        def _covariance_matrix(self, p):
-            p = self.to_params(p)
+    def _covariance_matrix(self, p):
+        p = self.to_params(p)
 
-            return par.cov_matrix(p['sigma_params'])
+        return par.cov_matrix(p['sigma_params'])
 
-        def __call__(self, p):
-            p = self.to_params(p)
+    def __call__(self, p):
+        p = self.to_params(p)
 
-            log_like = 0.0
+        log_like = 0.0
 
-            pgaussian = np.concatenate((p['mu'], p['sigma_params']))
-            gaussian_likelihood = gl.GaussianLikelihood(p['lens_params'])
-            log_like += gaussian_likelihood.log_likelihood(pgaussian)
+        pgaussian = np.concatenate((p['mu'], p['sigma_params']))
+        gaussian_likelihood = gl.GaussianLikelihood(p['lens_params'])
+        log_like += gaussian_likelihood.log_likelihood(pgaussian)
 
-            for lens_params, wll in zip(p['lens_params'], self.wl_likelihoods):
-                log_like += wll.log_likelihood(lens_params)
+        for lens_params, wll in zip(p['lens_params'], self.wl_likelihoods):
+            log_like += wll.log_likelihood(lens_params)
 
-            return log_like
+        return log_like
