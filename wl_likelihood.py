@@ -39,7 +39,7 @@ def NFW(r, M200, c200, zl, zs):
     dL  =   cosmocalc(zl,Ho,Om,Ol)['DA_Mpc']
     dS  =   cosmocalc(zs, Ho,Om, Ol)['DA_Mpc']
     dLS =   (dS*(1.0+zs)-dL*(1.0+zl))/(1.0+zs)
-    
+
     sigmacr=cMpc**2.0*dS/(4.0*GG*np.pi*dL*dLS)    #mean critical surface mass density in units Mpc^-2 Msolar
     
     p200    =   200.0*pcrit                         #density that is 200 times critical
