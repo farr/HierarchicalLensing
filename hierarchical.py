@@ -1,6 +1,7 @@
 import gaussian_likelihood as gl
 import numpy as np
 import plotutils.parameterizations as par
+import scipy.stats as ss
 import wl_likelihood as wl
 
 class HierarchicalWLPosterior(object):
@@ -17,19 +18,17 @@ class HierarchicalWLPosterior(object):
 
     We assume that there are a number of weak lensing shear
     measurements for each lens system.  The measurements are treated
-    as independent, and their sampling distribution is assumed to be
-    log-normal, with a peak at the NFW shear prediction and with
+    as independent, and each measurement is assumed to be a Gaussian
+    random variable with mean at the true value of the shear and
     standard deviation equal to the quoted observational uncertainty:
 
     ..math::
-      \ln \kappa(r) \sim N\left[ \mu_{NFW}(r; M_{200}, c), \sigma(r; M_{200}, c) \right]
+      \kappa(r) \sim N\left[ \mathrm{NFW}(r; M_{200}, c), \sigma(r) \right]
 
-    Where :math:`\mu_{NFW}(r; M_{200}, c)` is the log of the predicted
-    shear from an NFW profile with parameters :math:`M_{200}` and
-    :math:`c`, and :math:`\sigma(r; M_{200}, c)` is related to the
-    predicted shear and observational uncertainty by the constraint
-    that the standard deviation of the log-normal distribution matches
-    the quoted uncertainty.
+    Where :math:`\mathrm{NFW}(r; M_{200}, c)` is the predicted shear
+    from an NFW profile with parameters :math:`M_{200}` and :math:`c`,
+    and :math:`\sigma(r)` is the observational uncertainty
+    at that radius.
 
     """
 
@@ -105,13 +104,23 @@ class HierarchicalWLPosterior(object):
     def __call__(self, p):
         p = self.to_params(p)
 
-        log_like = 0.0
+        logp = 0.0
 
+        logp += np.sum(ss.norm.logpdf(p['mu'],
+                                      loc=np.array([np.log(1e14), np.log(3)]),
+                                      scale=np.array([np.log(10.0), np.log(10.0)])))
+
+        covm = self._covariance_matrix(p)
+        logp += np.sum(ss.norm.logpdf(np.array([covm[0,0], covm[0,1], covm[1,1]]),
+                                      loc=np.square(np.array([np.log(10.0), 0.0, np.log(2.0)])),
+                                      scale=np.square(np.log(10.0))))
+        logp += par.cov_log_jacobian(p['sigma_params'])
+        
         pgaussian = np.concatenate((p['mu'], p['sigma_params']))
         gaussian_likelihood = gl.GaussianLikelihood(p['lens_params'])
-        log_like += gaussian_likelihood.log_likelihood(pgaussian)
+        logp += gaussian_likelihood.log_likelihood(pgaussian)
 
         for lens_params, wll in zip(p['lens_params'], self.wl_likelihoods):
-            log_like += wll.log_likelihood(lens_params)
+            logp += wll.log_likelihood(lens_params)
 
-        return log_like
+        return logp

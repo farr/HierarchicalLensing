@@ -155,7 +155,7 @@ class WeakLensingLikelihood(object):
     def log_likelihood(self, p):
         """Returns the log of the likelihood of the stored data, assuming that
         each measurement at a given radius is independent, and the
-        measured value is log-normally distributed about the true
+        measured value is normally distributed about the true
         value, with a standard deviation equal to the quoted
         measurement uncertainty.
 
@@ -163,9 +163,7 @@ class WeakLensingLikelihood(object):
 
         shear_true = self.shear(p)
 
-        mus, sigmas = convert_to_lognormal(shear_true, self.shear_uncert)
-        
-        return np.sum(ss.lognorm.logpdf(self.shears, sigmas, scale=np.exp(mus)))
+        return np.sum(ss.norm.logpdf(self.shears, loc=shear_true, scale=self.shear_uncert))
 
     def __call__(self, p):
         """Synonym for ``log_likelihood``."""
@@ -180,9 +178,7 @@ class WeakLensingLikelihood(object):
 
         shear_true = self.shear(p)
 
-        mus, sigmas = convert_to_lognormal(shear_true, self.shear_uncert)
-
-        return np.random.lognormal(mean=mus, sigma=sigmas)
+        return np.random.normal(loc=shear_true, scale=self.shear_uncert)
 
     def shear(self, p):
         r"""Returns the model prediction for shear at parameters ``p``.
