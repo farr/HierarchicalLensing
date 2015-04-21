@@ -128,6 +128,12 @@ class WeakLensingLikelihood(object):
     def dtype(self):
         return np.dtype([('log_m200', np.float),
                          ('log_c', np.float)])
+    @property
+    def mu0(self):
+        return self._mu0
+    @property
+    def sigma0(self):
+        return self._sigma0
 
     def to_params(self, p):
         """Returns a view of the array ``p`` with named columns corresponding

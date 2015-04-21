@@ -106,6 +106,8 @@ data {
   real dls[Nc];
   real dss[Nc];
   real dlss[Nc];
+  vector[2] mu0;
+  vector[2] sigma0;
 }
 
 parameters {
@@ -128,11 +130,13 @@ transformed parameters {
 }
 
 model {
-  // Flat prior for mu and sigma?
-
+  mu ~ normal(mu0, sigma0);
+  sigma[1,1] ~ normal(sigma0[1], 1.0);
+  sigma[2,2] ~ normal(sigma0[2], 1.0);
+  
   log_cl_params ~ multi_normal(mu, sigma);
 
   for (i in 1:Nc) {
-        kappas[i] ~ lognormal(log(model_kappas[i]), sigma_kappas[i]);
+        kappas[i] ~ normal(model_kappas[i], sigma_kappas[i]);
   }
 }

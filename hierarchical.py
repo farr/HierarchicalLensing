@@ -32,7 +32,9 @@ class HierarchicalWLPosterior(object):
 
     """
 
-    def __init__(self, rs, kappas, sigma_kappas, zl, zs):
+    def __init__(self, rs, kappas, sigma_kappas, zl, zs,\
+                 mu0 = np.array([np.log(1e14), np.log(3)]),\
+                 sigma0 = np.array([np.log(10), np.log(3)])):
         """Initialise the posterior object with the given observations.
 
         :param rs: A list of arrays, each array giving the radii at
@@ -50,6 +52,11 @@ class HierarchicalWLPosterior(object):
 
         :param zs: An array giving the source redshift for each lens.
 
+        :param mu0: The prior guess for the centre of the distribution
+          from which each lens' properties is drawn
+
+        :param sigma0: The prior guess at the range of log-masses and
+          log-concentrations from which the lens properties are drawn.
         """
 
         self._rs = rs
@@ -57,6 +64,9 @@ class HierarchicalWLPosterior(object):
         self._sigma_kappas = sigma_kappas
         self._zl = zl
         self._zs = zs
+
+        self._mu0 = mu0
+        self._sigma0 = sigma0
 
         self._wl_likelihoods = [wl.WeakLensingLikelihood(r, s, su, zl, zs) for \
                                 r, s, su, zl, zs in \
@@ -92,6 +102,12 @@ class HierarchicalWLPosterior(object):
     @property
     def nparams(self):
         return 5 + 2*self.nlens
+    @property
+    def mu0(self):
+        return self._mu0
+    @property
+    def sigma0(self):
+        return self._sigma0
 
     def to_params(self, p):
         return np.atleast_1d(p).view(self.dtype).squeeze()
@@ -106,15 +122,12 @@ class HierarchicalWLPosterior(object):
 
         logp = 0.0
 
-        logp += np.sum(ss.norm.logpdf(p['mu'],
-                                      loc=np.array([np.log(1e14), np.log(3)]),
-                                      scale=np.array([np.log(10.0), np.log(10.0)])))
+        logp += np.sum(ss.norm.logpdf(p['mu'], loc=self.mu0, scale=self.sigma0))
 
         covm = self._covariance_matrix(p)
-        logp += np.sum(ss.norm.logpdf(np.array([covm[0,0], covm[0,1], covm[1,1]]),
-                                      loc=np.square(np.array([np.log(10.0), 0.0, np.log(2.0)])),
-                                      scale=np.square(np.log(10.0))))
         logp += par.cov_log_jacobian(p['sigma_params'])
+        logp += ss.norm.logpdf(covm[0,0], loc=self.sigma0[0], scale=1)
+        logp += ss.norm.logpdf(covm[1,1], loc=self.sigma0[1], scale=1)
         
         pgaussian = np.concatenate((p['mu'], p['sigma_params']))
         gaussian_likelihood = gl.GaussianLikelihood(p['lens_params'])
