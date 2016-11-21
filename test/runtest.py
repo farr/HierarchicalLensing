@@ -27,6 +27,8 @@ if __name__ == '__main__':
 
     fit = pystan.stan(file='nfw_hier.stan', data=data, iter=args.niter, thin=thin, chains=args.nchain, n_jobs=args.nchain)
 
+    print(fit)
+
     with bz2.BZ2File('testchains.pkl.bz2.temp', 'w') as out:
         pickle.dump(fit.extract(permuted=True), out)
     with bz2.BZ2File('testmodel.pkl.bz2.temp', 'w') as out:
