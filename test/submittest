@@ -1,0 +1,12 @@
+NITER = 16000
+
+universe = vanilla
+getenv = True
+executable = /home/wfarr/HierarchicalLensing/test/runtest.py
+arguments = --niter $(NITER)
+num_cpus = 4
+output = runtest.out
+error = runtest.err
+log = runtest.log
+
+Queue
