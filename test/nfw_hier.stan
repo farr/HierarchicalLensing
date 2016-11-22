@@ -170,7 +170,7 @@ model {
     /* This will generate a warning because log_cl_params is a
        transformed parameter, but it is OK because it is directly
        proportional to logM and logC. */
-    log_cl_params ~ multi_normal_cholesky(mu, L);
+    log_cl_params[i] ~ multi_normal_cholesky(mu, L);
     
     kappas[i] ~ normal(model_kappas[i], sigma_kappas[i]);
   }
