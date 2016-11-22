@@ -122,7 +122,8 @@ parameters {
   real<lower=log(1e12), upper=log(1e16)> logM[nc];
   real<lower=log(1), upper=log(10)> logC[nc];
   vector[3] dmu;
-  cov_matrix[3] Sigma;
+  vector<lower=0>[3] tau;
+  corr_matrix[3] Omega;
 }
 
 transformed parameters {
@@ -131,7 +132,10 @@ transformed parameters {
   vector[3] log_cl_params[nc];
   vector[3] cl_params[nc];
 
+  matrix[3,3] Sigma;
+
   mu = log(mu0) + dmu;
+  Sigma = quad_form_diag(Omega, tau);
 
   for (i in 1:nc) {
     log_cl_params[i][1] = logM[i];
@@ -147,16 +151,8 @@ transformed parameters {
 
 model {
   matrix[3,3] L;
-  vector[3] d;
-  matrix[3,3] scale;
 
   L = cholesky_decompose(Sigma);
-
-  // Multiplied by nu - p - 1 so that mean value of prior is first number
-  d[1] = 7.0*(nu - 3 - 1); // Close to variance of flat-in-log between 1e12 and 1e16
-  d[2] = 0.4*(nu - 3 - 1); // Close to variance of flat-in-log between 1 and 10
-  d[3] = 0.02*(nu - 3 - 1); // Close to variance of flat-in-log between 1 and 1.6 (z = 0 to 0.6)
-  scale = diag_matrix(d);
 
   // Broad prior on mu, with 1-sigma interval being the range of M, C,
   // Z above.
@@ -164,7 +160,11 @@ model {
   dmu[2] ~ normal(0, 1);
   dmu[3] ~ normal(0, 0.25);
   
-  Sigma ~ inv_wishart(nu, scale);
+  tau[1] ~ cauchy(0.0, log(1e16)-log(1e12));
+  tau[2] ~ cauchy(0.0, log(10)-log(1));
+  tau[3] ~ cauchy(0.0, log(1.6)-log(1.0));
+
+  Omega ~ lkj_corr(3); // Weakly prefer identity matrix
   
   for (i in 1:nc) {
     /* This will generate a warning because log_cl_params is a
