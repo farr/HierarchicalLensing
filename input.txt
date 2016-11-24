@@ -1,0 +1,2 @@
+TrueMu  =   c(log(2e14), log(3), log(1.0+0.3))
+TrueSigma   =   matrix(c(1.1,-0.1,0.05,-0.1,0.4,0.05,0.05,0.05,0.01), nrow=3, ncol=3)
